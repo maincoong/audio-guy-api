@@ -16,6 +16,9 @@ const ALLOWED_ORIGINS = new Set([
   "http://127.0.0.1:3000",
   "https://joeymakesweb.com",
   "https://www.joeymakesweb.com",
+  "https://joeysoundmap.com",
+  "https://www.joeysoundmap.com",
+
 ]);
 
 app.use(cors({
