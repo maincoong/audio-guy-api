@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recording Equipment</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="interactivity.css">
+
+  <style>
+    :root{
+      --bg:#ffffff;
+      --ink:#0f1113;
+      --muted:#667085;
+      --focus:#1b66ff;
+      --max:1100px;
+
+      --sage-top:#6f9560;
+      --sage-bottom:#5f8453;
+      --sage-ink:#ffffff;
+      --sage-ink-muted:rgba(255,255,255,0.92);
+    }
+
+    *{ box-sizing:border-box; }
+    html, body{ height:100%; }
+
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--ink);
+      font-family:"Open Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height:1.55;
+    }
+
+    .skip-link{
+      position:absolute;
+      left:12px;
+      top:12px;
+      padding:10px 12px;
+      background:var(--bg);
+      color:var(--ink);
+      border:1px solid #e6e8ec;
+      border-radius:10px;
+      transform:translateY(-160%);
+      z-index:999;
+      text-decoration:none;
+      font-weight:600;
+    }
+    .skip-link:focus{
+      transform:translateY(0);
+      outline:2px solid var(--focus);
+      outline-offset:2px;
+    }
+
+    .wrap{
+      max-width:var(--max);
+      margin:0 auto;
+      padding:48px clamp(20px, 4vw, 64px);
+      width:90%;
+    }
+
+    .top{
+      padding-top:10px;
+      padding-bottom:24px;
+      text-align:center;
+    }
+
+    .kicker{
+      margin:0 0 10px;
+      color:var(--muted);
+      font-weight:600;
+      letter-spacing:0.26em;
+      text-transform:uppercase;
+      font-size:0.82rem;
+    }
+
+    .hero-title{
+      margin:0;
+      font-size:clamp(2.1rem, 3.6vw, 3rem);
+      font-weight:600;
+      letter-spacing:-0.02em;
+      line-height:1.12;
+    }
+
+    .hero-subtitle{
+      margin:14px auto 0;
+      max-width:62ch;
+      color:#344054;
+      font-size:clamp(1.02rem, 1.4vw, 1.18rem);
+    }
+
+    .hero-rule{
+      width:min(120px, 26vw);
+      height:1px;
+      background:#e6e8ec;
+      border:0;
+      margin:22px auto 0;
+    }
+
+    .parallax{
+      width:100vw;
+      margin-left:calc(50% - 50vw);
+      margin-right:calc(50% - 50vw);
+      position:relative;
+      overflow:hidden;
+      display:grid;
+      place-items:center;
+      border-top:1px solid #e6e8ec;
+      border-bottom:1px solid #e6e8ec;
+    }
+
+    .parallax--top{ min-height:200px; background:var(--sage-top); }
+    .parallax--bottom{ min-height:180px; background:var(--sage-bottom); }
+
+    .section{ margin-top:56px; }
+    .section-head h2{
+      margin:0;
+      font-size:1.5rem;
+      font-weight:600;
+      color:#344054;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(200px, 1fr));
+      column-gap:48px;
+      row-gap:56px;
+      margin-top:48px;
+    }
+
+    .item{ display:flex; justify-content:center; }
+
+    .icon{
+      margin-bottom:6px;
+      width:80px;
+      height:80px;
+      display:grid;
+      place-items:center;
+      align-items:flex-start;
+      justify-content:flex-start;
+    }
+
+    .icon img{
+      width:100%;
+      height:100%;
+      object-fit:contain;
+      object-position:top center;
+      filter:saturate(0) contrast(1.12);
+      opacity:0.96;
+    }
+
+    .title{
+      margin:4px 0 0;
+      font-size:0.95rem;
+      font-weight:600;
+      letter-spacing:0.04em;
+      text-transform:uppercase;
+      color:#475467;
+      max-width:22ch;
+    }
+
+    .note{
+      margin:10px 0 0;
+      color:var(--muted);
+      font-size:0.95rem;
+      line-height:1.4;
+      max-width:36ch;
+    }
+
+    /* Mode tabs */
+    .mode-tabs{
+      margin:22px auto 0;
+      display:inline-flex;
+      gap:10px;
+      padding:6px;
+      border:1px solid #e6e8ec;
+      border-radius:999px;
+      background:#fff;
+    }
+
+    .mode-tab{
+      appearance:none;
+      border:0;
+      background:transparent;
+      color:#344054;
+      font:inherit;
+      font-weight:600;
+      padding:10px 14px;
+      border-radius:999px;
+      cursor:pointer;
+    }
+
+    .mode-tab:focus{
+      outline:2px solid var(--focus);
+      outline-offset:2px;
+    }
+
+    .mode-tab[aria-pressed="true"]{
+      background:#0f1113;
+      color:#ffffff;
+    }
+
+    .mode-hint{
+      margin:12px auto 0;
+      color:var(--muted);
+      font-size:0.95rem;
+      max-width:62ch;
+    }
+
+    /* ORIGINAL NORMALIZATION RULES */
+    .icon img[src*="zoomh4npro"]{ transform:scale(0.75); margin-top:-17px; }
+    .icon img[src*="zoomh6n"]{ transform:scale(0.75); margin-top:-20px; }
+    .icon img[src="zoomh4n.png"]{ transform:scale(0.88); margin-top:-8px; }
+    .icon img[src="rode-windscreen.png"]{ transform:scale(1.6); }
+    .icon img[src="mixpre3.png"]{ transform:scale(1.3); margin-top:14px; }
+    .icon img[src*="smallrig"],
+    .icon img[src*="shockmount"]{ transform:scale(0.9); margin-top:-13px; }
+
+    footer{
+      margin-top:96px;
+      border-top:1px solid #eef0f3;
+    }
+
+    .foot{
+      max-width:var(--max);
+      margin:0 auto;
+      padding:24px clamp(20px, 4vw, 64px);
+      display:flex;
+      justify-content:space-between;
+      width:90%;
+    }
+
+    @media (max-width:640px){
+      .grid{ row-gap:40px; }
+      .icon{ width:64px; height:52px; }
+      .parallax--top{ min-height:170px; }
+      .parallax--bottom{ min-height:160px; }
+      .mode-tabs{
+        display:flex;
+        width:100%;
+        justify-content:center;
+        flex-wrap:wrap;
+      }
+    }
+  </style>
+</head>
+
+<body>
+<a class="skip-link" href="#gear">Skip to equipment grid</a>
+
+<main aria-label="Equipment list">
+
+  <div class="wrap">
+    <header class="top">
+      <p class="kicker">Recording equipment</p>
+      <h1 class="hero-title">Let&#39;s make magic happen.</h1>
+      <p class="hero-subtitle">
+        A field-ready kit for close listening, field recording workshops, interviews, and soundscape work.
+      </p>
+      <hr class="hero-rule">
+
+      <nav class="mode-tabs" aria-label="View notes by service">
+        <button type="button" class="mode-tab" data-mode="workshop" aria-pressed="true">
+          Workshops
+        </button>
+        <button type="button" class="mode-tab" data-mode="sound_design" aria-pressed="false">
+          Sound design
+        </button>
+      </nav>
+
+      <p class="mode-hint" id="modeHint">
+        Viewing notes for workshops.
+      </p>
+    </header>
+  </div>
+
+  <section class="parallax parallax--top">
+    <div class="banner-card"></div>
+  </section>
+
+  <div class="wrap">
+    <section class="section" aria-labelledby="gear">
+      <div class="section-head">
+        <h2 id="gear">Recording gear</h2>
+      </div>
+
+      <div class="grid" role="list">
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="mkh8040_pair" href="https://www.economik.com/products/mkh-8040-stereoset" target="_blank" rel="noopener">
+            <div class="icon"><img src="sen-microphones.png" alt="Sennheiser MKH 8040 stereo pair"></div>
+            <p class="title">Sennheiser MKH 8040 pair</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="mixpre3_ii" href="https://www.long-mcquade.com/151828/Pro-Audio-Recording/Multi-track-Recorders/Sound-Devices/MixPre-3-II-3-Channel-5-Track-Recorder-Audio-Interface.htm" target="_blank" rel="noopener">
+            <div class="icon"><img src="mixpre3.png" alt="Sound Devices MixPre-3 II recorder"></div>
+            <p class="title">Sound Devices MixPre-3 II</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="geofon" href="https://store.lom.audio/products/geofon" target="_blank" rel="noopener">
+            <div class="icon"><img src="geofon.png" alt="LOM Geofon contact microphone"></div>
+            <p class="title">LOM Geofon</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="roland_cs10em" href="https://www.amazon.ca/dp/B003QGPCTE" target="_blank" rel="noopener">
+            <div class="icon"><img src="binaural.png" alt="Roland CS-10EM binaural microphones"></div>
+            <p class="title">Roland CS-10EM</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="schertler_dynuni" href="https://www.schertler.com/en_IT/swissmade/pickups/pickups-for-universal-use/dyn-uni" target="_blank" rel="noopener">
+            <div class="icon"><img src="schertler-pickup.png" alt="Schertler DYN-UNI-P48 pickup"></div>
+            <p class="title">Schertler DYN-UNI-P48</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="zoomh6" href="https://zoomcorp.com/en/ca/handheld-recorders/handheld-recorders/h6-audio-recorder/" target="_blank" rel="noopener">
+            <div class="icon"><img src="zoomh6n.png" alt="Zoom H6 recorder"></div>
+            <p class="title">Zoom H6</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="zoomh4n_x6" href="https://zoomcorp.com/en/ca/handheld-recorders/handheld-recorders/h4n/" target="_blank" rel="noopener">
+            <div class="icon"><img src="zoomh4n.png" alt="Zoom H4n recorder"></div>
+            <p class="title">Zoom H4n (x6)</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="zoomh4npro" href="https://zoomcorp.com/en/ca/handheld-recorders/handheld-recorders/h4n-pro/" target="_blank" rel="noopener">
+            <div class="icon"><img src="zoomh4npro.png" alt="Zoom H4n Pro recorder"></div>
+            <p class="title">Zoom H4n Pro</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="gutmann_windscreens" href="https://microphone-windscreen.com/windscreens-for-audio-recorders/zoom/6/microphone-windscreen-for-zoom-h4n/h4nsp/h4n-pro" target="_blank" rel="noopener">
+            <div class="icon"><img src="gutman-windscreen.png" alt="Gutmann windscreen for handheld recorders"></div>
+            <p class="title">Gutmann windscreens</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="rode_ws8_x4" href="https://rode.com/en-ca/products/ws8" target="_blank" rel="noopener">
+            <div class="icon"><img src="rode-windscreen.png" alt="Rode WS8 windscreen"></div>
+            <p class="title">Rode WS8 windscreen (x4)</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="rode_spreader" href="https://www.amazon.ca/dp/B00JR2DDW4" target="_blank" rel="noopener">
+            <div class="icon"><img src="rode-spreader.png" alt="Rode stereo spreader bar"></div>
+            <p class="title">Rode stereo spreader bar</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+        <div class="item" role="listitem">
+          <a class="card" data-gear-id="smallrig_handle" href="https://www.amazon.ca/dp/B08GLW4RK7" target="_blank" rel="noopener">
+            <div class="icon"><img src="shockmount.png" alt="SmallRig handle"></div>
+            <p class="title">SmallRig handle</p>
+            <p class="note" data-note></p>
+          </a>
+        </div>
+
+      </div>
+
+    </section>
+  </div>
+
+  <section class="parallax parallax--bottom">
+    <div class="banner-card">
+      <p class="banner-line">This is what I use to make magic happen.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="foot">
+    <div></div>
+    <div>Joey Zaurrini © <span id="year"></span></div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script>
+
+<script>
+  (function(){
+    const API_BASE = "http://localhost:3000"; // change to Render URL later
+    const tabs = Array.from(document.querySelectorAll(".mode-tab"));
+    const hint = document.getElementById("modeHint");
+
+    function setPressed(activeMode){
+      tabs.forEach(btn => {
+        const isActive = btn.dataset.mode === activeMode;
+        btn.setAttribute("aria-pressed", isActive ? "true" : "false");
+      });
+    }
+
+    function setHint(mode){
+      if(!hint) return;
+      hint.textContent =
+        mode === "sound_design"
+          ? "Viewing notes for sound design."
+          : "Viewing notes for workshops.";
+    }
+
+    async function loadNotes(mode){
+      try{
+        const url = `${API_BASE}/api/gear-notes?mode=${encodeURIComponent(mode)}&t=${Date.now()}`;
+        const res = await fetch(url, { cache: "no-store" });
+        if(!res.ok) throw new Error("Notes fetch failed");
+        const notes = await res.json();
+
+        document.querySelectorAll("[data-gear-id]").forEach(card => {
+          const id = card.getAttribute("data-gear-id");
+          const noteEl = card.querySelector("[data-note]");
+          if(!noteEl) return;
+          noteEl.textContent = notes[id] || "";
+        });
+      }catch(e){
+        console.error(e);
+        document.querySelectorAll("[data-note]").forEach(el => el.textContent = "");
+      }
+    }
+
+    function setMode(mode, pushState){
+      setPressed(mode);
+      setHint(mode);
+      loadNotes(mode);
+
+      if(pushState){
+        const u = new URL(window.location.href);
+        u.searchParams.set("mode", mode);
+        history.replaceState(null, "", u.toString());
+      }
+    }
+
+    const urlMode = new URLSearchParams(window.location.search).get("mode");
+    const initialMode = (urlMode === "sound_design" || urlMode === "workshop") ? urlMode : "workshop";
+    setMode(initialMode, true);
+
+    tabs.forEach(btn => {
+      btn.addEventListener("click", () => {
+        setMode(btn.dataset.mode, true);
+      });
+    });
+  })();
+</script>
+
+</body>
+</html>
