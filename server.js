@@ -167,7 +167,7 @@ const SCORE_THOUGHT = {
 const BLOG_POSTS = [
   {
     id: 1,
-    title: "The City and Sonic: Interactions between Listener and Machine",
+    title: "They City and Sonic Interactions between Listener and Machine",
     color: "#ffbe4f",
     tileImg: "tiles/city-sonic.png",
     tileImgAlt: "Drawing for The City and Sonic",
@@ -471,7 +471,7 @@ const BLOG_POSTS = [
       </div>
 
       <div class="atEntry">
-        <img src="drawings/paths.png" alt="Paths in a square" class="atImg atImg--wide" loading="lazy" decoding="async">
+        <img src="drawings/path.png" alt="Paths in a square" class="atImg atImg--wide" loading="lazy" decoding="async">
         <h4>Paths in the Square</h4>
         <p>
           To find noise sources I looked for a spot where I could just stand, and then followed my ears. I started in the centre of the square, where the Boer War monument is. In this centre, it diverged into 3 paths on either side, all made of cobblestone, through the grassy area, now covered with snow, populated with some trees. I got to know this place in tiers, first some areas becoming illuminated, then others following suit.
