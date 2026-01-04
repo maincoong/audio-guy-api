@@ -69,20 +69,18 @@ if (ALLOW_LOCAL) {
   ].forEach((o) => ALLOWED_ORIGINS.add(o));
 }
 
+function isAllowedOrigin(origin) {
+  // Allow curl/postman/health checks with no Origin header
+  if (!origin) return true;
+
+  // Exact match allow-list
+  return ALLOWED_ORIGINS.has(origin);
+}
+
 // ---------- CORS (applies to ALL routes, including /health) ----------
 app.use(
   cors({
-    origin: (origin, cb) => {
-      // Allow curl/postman/health checks with no Origin header
-      if (!origin) return cb(null, true);
-
-      // Exact match allow-list
-      if (ALLOWED_ORIGINS.has(origin)) return cb(null, true);
-
-      // Returning an error here makes cors omit the header, which looks like a CORS problem.
-      // We'll still return a JSON error from our error handler.
-      return cb(new Error(`Not allowed by CORS: ${origin}`));
-    },
+    origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
     credentials: false,
     methods: ["GET", "OPTIONS"],
     allowedHeaders: ["Content-Type"],
@@ -91,7 +89,22 @@ app.use(
 );
 
 // Preflight for any route
-app.options("*", cors());
+// IMPORTANT: do NOT use "*" here on newer router builds (Render/Node 22+ can throw)
+app.options(/.*/, cors());
+
+// Optional: clear 403 when Origin is blocked (instead of a misleading 500)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && !isAllowedOrigin(origin)) {
+    return res.status(403).json({
+      ok: false,
+      error: "CORS origin not allowed",
+      origin,
+      allowedOrigins: Array.from(ALLOWED_ORIGINS),
+    });
+  }
+  next();
+});
 
 // ---------- Data (Gear Notes) ----------
 const NOTES = {
@@ -223,7 +236,6 @@ const BLOG_POSTS = [
       </p>
     `,
   },
-
   {
     id: 2,
     title: "Listening to Victory Square",
@@ -371,7 +383,6 @@ const BLOG_POSTS = [
       </p>
     `,
   },
-
   {
     id: 3,
     title: "Accessibility Thoughts",
@@ -544,6 +555,7 @@ app.get("/api/blog/:id", (req, res) => {
 
 // ---------- Error handling ----------
 app.use((err, _req, res, _next) => {
+  console.error("[SERVER ERROR]", err);
   const msg = String(err?.message || "Server error");
   res.status(500).json({ ok: false, error: msg });
 });
@@ -554,5 +566,6 @@ app.listen(PORT, () => {
   console.log(`PUBLIC_ORIGIN=${PUBLIC_ORIGIN}`);
   console.log(`ALLOW_WWW=${ALSO_ALLOW_WWW}`);
   console.log(`ALLOW_LOCAL=${ALLOW_LOCAL}`);
+  console.log(`Allowed origins:\n- ${Array.from(ALLOWED_ORIGINS).join("\n- ")}`);
   console.log(`BLOG_POSTS=${BLOG_POSTS.length}`);
 });
