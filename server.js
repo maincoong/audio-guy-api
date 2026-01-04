@@ -167,7 +167,7 @@ const SCORE_THOUGHT = {
 const BLOG_POSTS = [
   {
     id: 1,
-    title: "They City and Sonic Interactions between Listener and Machine",
+    title: "Sonic Interactions between Listener and Machine",
     color: "#ffbe4f",
     tileImg: "tiles/city-sonic.png",
     tileImgAlt: "Drawing for The City and Sonic",
