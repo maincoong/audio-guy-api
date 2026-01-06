@@ -1,4 +1,4 @@
-// server.js (ESM) - Public API for joeysoundmap.com + local dev support
+// server.js (ESM) - Public API + Admin write endpoints + file-backed persistence
 //
 // Install:
 //   npm i express cors
@@ -11,17 +11,28 @@
 //   Env:
 //     PUBLIC_ORIGIN=https://joeysoundmap.com
 //     ALLOW_WWW=true
-//     ALLOW_LOCAL=true   (set false if you want to block localhost in production)
+//     ALLOW_LOCAL=true        (set false if you want to block localhost in production)
+//     ADMIN_TOKEN=your_long_token_here   (required for POST/PUT/DELETE)
 //
 // Endpoints:
-//   GET /                     -> "OK"
-//   GET /health               -> JSON health + allowed origins
-//   GET /api/gear-notes       -> gear notes JSON
-//   GET /api/blog             -> blog tiles list (no body)
-//   GET /api/blog/:id         -> full post (includes body)
+//   GET  /                     -> "OK"
+//   GET  /health               -> JSON health + allowed origins
+//   GET  /api/gear-notes       -> gear notes JSON
+//   GET  /api/blog             -> blog tiles list (no body)
+//   GET  /api/blog/:id         -> full post (includes body)
+//   POST /api/blog             -> create post (admin token)
+//   PUT  /api/blog/:id         -> update post (admin token)
+//   DELETE /api/blog/:id       -> delete post (admin token)
+//
+// Storage:
+//   - Persists to ./data/blog-posts.json on disk.
+//   - On first run, seeds from BLOG_POSTS_SEED if no file exists.
 
 import express from "express";
 import cors from "cors";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const app = express();
 
@@ -37,8 +48,14 @@ const ALSO_ALLOW_WWW = (process.env.ALLOW_WWW || "true").toLowerCase() === "true
 // Allow localhost testing
 const ALLOW_LOCAL = (process.env.ALLOW_LOCAL || "true").toLowerCase() === "true";
 
+// Admin token for write operations
+const ADMIN_TOKEN = String(process.env.ADMIN_TOKEN || "").trim();
+
 // If behind proxy (Render), helps correct IP/proto
 app.set("trust proxy", 1);
+
+// Parse JSON bodies for admin endpoints
+app.use(express.json({ limit: "2mb" }));
 
 // ---------- Allowed origins ----------
 const ALLOWED_ORIGINS = new Set();
@@ -72,8 +89,6 @@ if (ALLOW_LOCAL) {
 function isAllowedOrigin(origin) {
   // Allow curl/postman/health checks with no Origin header
   if (!origin) return true;
-
-  // Exact match allow-list
   return ALLOWED_ORIGINS.has(origin);
 }
 
@@ -82,14 +97,13 @@ app.use(
   cors({
     origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
     credentials: false,
-    methods: ["GET", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     maxAge: 86400,
   })
 );
 
 // Preflight for any route
-// IMPORTANT: do NOT use "*" here on newer router builds (Render/Node 22+ can throw)
 app.options(/.*/, cors());
 
 // Optional: clear 403 when Origin is blocked (instead of a misleading 500)
@@ -105,6 +119,27 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// ---------- Simple admin auth ----------
+function requireAdmin(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return res.status(500).json({
+      ok: false,
+      error: "ADMIN_TOKEN is not set on the server",
+    });
+  }
+
+  const auth = String(req.headers.authorization || "");
+  const token = auth.toLowerCase().startsWith("bearer ")
+    ? auth.slice(7).trim()
+    : "";
+
+  if (!token || token !== ADMIN_TOKEN) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  next();
+}
 
 // ---------- Data (Gear Notes) ----------
 const NOTES = {
@@ -163,8 +198,8 @@ const SCORE_THOUGHT = {
   sound_design: "Scores are research: they hold form, attention, and memory.",
 };
 
-// ---------- Blog posts (pulled from your blog.js data) ----------
-const BLOG_POSTS = [
+// ---------- Blog posts seed (FULL, UNABRIDGED) ----------
+const BLOG_POSTS_SEED = [
   {
     id: 1,
     title: "Sonic Interactions between Listener and Machine",
@@ -236,6 +271,7 @@ const BLOG_POSTS = [
       </p>
     `,
   },
+
   {
     id: 2,
     title: "Listening to Victory Square",
@@ -383,6 +419,7 @@ const BLOG_POSTS = [
       </p>
     `,
   },
+
   {
     id: 3,
     title: "Accessibility Thoughts",
@@ -487,8 +524,96 @@ const BLOG_POSTS = [
   },
 ];
 
-// Helpful lookup
-const BLOG_BY_ID = new Map(BLOG_POSTS.map((p) => [String(p.id), p]));
+// ---------- File-backed persistence ----------
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const DATA_DIR = path.join(__dirname, "data");
+const BLOG_FILE = path.join(DATA_DIR, "blog-posts.json");
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function safeJsonParse(text, fallback) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
+}
+
+function loadBlogPostsFromDisk() {
+  ensureDataDir();
+
+  if (!fs.existsSync(BLOG_FILE)) {
+    // first run: seed
+    fs.writeFileSync(BLOG_FILE, JSON.stringify(BLOG_POSTS_SEED, null, 2), "utf8");
+    return BLOG_POSTS_SEED.slice();
+  }
+
+  const raw = fs.readFileSync(BLOG_FILE, "utf8");
+  const parsed = safeJsonParse(raw, null);
+
+  if (!Array.isArray(parsed)) {
+    // corrupted file: reset to seed
+    fs.writeFileSync(BLOG_FILE, JSON.stringify(BLOG_POSTS_SEED, null, 2), "utf8");
+    return BLOG_POSTS_SEED.slice();
+  }
+
+  return parsed;
+}
+
+function saveBlogPostsToDisk(posts) {
+  ensureDataDir();
+  fs.writeFileSync(BLOG_FILE, JSON.stringify(posts, null, 2), "utf8");
+}
+
+// In-memory posts loaded from disk
+let BLOG_POSTS = loadBlogPostsFromDisk();
+
+function rebuildIndex() {
+  BLOG_BY_ID = new Map(BLOG_POSTS.map((p) => [String(p.id), p]));
+}
+
+// We use let so we can rebuild
+let BLOG_BY_ID = new Map(BLOG_POSTS.map((p) => [String(p.id), p]));
+
+// Helpers
+function normalizePostInput(input, existingId = null) {
+  const out = {};
+
+  // id
+  if (existingId != null) {
+    out.id = Number(existingId);
+  } else if (input?.id != null && String(input.id).trim() !== "") {
+    out.id = Number(input.id);
+  }
+
+  out.title = String(input?.title || "").trim();
+  out.color = String(input?.color || "").trim();
+  out.tileImg = String(input?.tileImg || "").trim();
+  out.tileImgAlt = String(input?.tileImgAlt || "").trim();
+  out.meta = String(input?.meta || "").trim();
+  out.metaLinkText = String(input?.metaLinkText || "").trim();
+  out.metaLinkHref = String(input?.metaLinkHref || "").trim();
+  out.body = String(input?.body || "");
+
+  return out;
+}
+
+function validatePost(post) {
+  if (!Number.isFinite(post.id) || post.id <= 0) return "Post id must be a positive number";
+  if (!post.title) return "title is required";
+  if (!post.color) return "color is required";
+  if (typeof post.body !== "string") return "body must be a string";
+  return null;
+}
+
+function nextId(posts) {
+  const max = posts.reduce((m, p) => Math.max(m, Number(p.id) || 0), 0);
+  return max + 1;
+}
 
 // ---------- Routes ----------
 app.get("/", (_req, res) => {
@@ -504,6 +629,8 @@ app.get("/health", (_req, res) => {
     allowLocal: ALLOW_LOCAL,
     allowWww: ALSO_ALLOW_WWW,
     allowedOrigins: Array.from(ALLOWED_ORIGINS),
+    blogPosts: BLOG_POSTS.length,
+    hasAdminToken: Boolean(ADMIN_TOKEN),
   });
 });
 
@@ -524,7 +651,7 @@ app.get("/api/blog", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   const tiles = BLOG_POSTS
     .slice()
-    .sort((a, b) => a.id - b.id)
+    .sort((a, b) => Number(a.id) - Number(b.id))
     .map((p) => ({
       id: p.id,
       title: p.title,
@@ -553,6 +680,85 @@ app.get("/api/blog/:id", (req, res) => {
   res.json(post);
 });
 
+// Create post (admin)
+app.post("/api/blog", requireAdmin, (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
+  const incoming = normalizePostInput(req.body);
+  if (!incoming.id || !Number.isFinite(incoming.id)) {
+    incoming.id = nextId(BLOG_POSTS);
+  }
+
+  const err = validatePost(incoming);
+  if (err) return res.status(400).json({ ok: false, error: err });
+
+  const idStr = String(incoming.id);
+  if (BLOG_BY_ID.has(idStr)) {
+    return res.status(409).json({ ok: false, error: "Post with this id already exists" });
+  }
+
+  BLOG_POSTS.push(incoming);
+  BLOG_POSTS.sort((a, b) => Number(a.id) - Number(b.id));
+
+  saveBlogPostsToDisk(BLOG_POSTS);
+  rebuildIndex();
+
+  res.status(201).json({ ok: true, post: incoming });
+});
+
+// Update post (admin)
+app.put("/api/blog/:id", requireAdmin, (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
+  const id = String(req.params.id || "").trim();
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ ok: false, error: "Invalid id" });
+  }
+
+  const existing = BLOG_BY_ID.get(id);
+  if (!existing) return res.status(404).json({ ok: false, error: "Post not found" });
+
+  const updated = normalizePostInput(req.body, id);
+
+  // allow partial update by falling back to existing values
+  const merged = {
+    ...existing,
+    ...updated,
+    id: Number(id),
+  };
+
+  const err = validatePost(merged);
+  if (err) return res.status(400).json({ ok: false, error: err });
+
+  BLOG_POSTS = BLOG_POSTS.map((p) => (String(p.id) === id ? merged : p));
+  BLOG_POSTS.sort((a, b) => Number(a.id) - Number(b.id));
+
+  saveBlogPostsToDisk(BLOG_POSTS);
+  rebuildIndex();
+
+  res.json({ ok: true, post: merged });
+});
+
+// Delete post (admin)
+app.delete("/api/blog/:id", requireAdmin, (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+
+  const id = String(req.params.id || "").trim();
+  if (!/^\d+$/.test(id)) {
+    return res.status(400).json({ ok: false, error: "Invalid id" });
+  }
+
+  const existing = BLOG_BY_ID.get(id);
+  if (!existing) return res.status(404).json({ ok: false, error: "Post not found" });
+
+  BLOG_POSTS = BLOG_POSTS.filter((p) => String(p.id) !== id);
+
+  saveBlogPostsToDisk(BLOG_POSTS);
+  rebuildIndex();
+
+  res.json({ ok: true, deletedId: Number(id) });
+});
+
 // ---------- Error handling ----------
 app.use((err, _req, res, _next) => {
   console.error("[SERVER ERROR]", err);
@@ -568,4 +774,6 @@ app.listen(PORT, () => {
   console.log(`ALLOW_LOCAL=${ALLOW_LOCAL}`);
   console.log(`Allowed origins:\n- ${Array.from(ALLOWED_ORIGINS).join("\n- ")}`);
   console.log(`BLOG_POSTS=${BLOG_POSTS.length}`);
+  console.log(`ADMIN_TOKEN_SET=${Boolean(ADMIN_TOKEN)}`);
+  console.log(`BLOG_FILE=${BLOG_FILE}`);
 });
